@@ -98,6 +98,8 @@ def contraintes_reserve_de_puissance(model,dict_N,dict_Thermique,consommation):
 # Partie 5
 #####################################################################################
 
+# 5.1 ###############################################################################
+
 class Centrale_hydro:
     def __init__(self, name, P, Cstart, Cheure, debit):
         self.name = name
@@ -114,5 +116,94 @@ def variable_decision_hydraulique(model,dict_Hydro):
             dict_H[Y,t] = model.addVar(vtype=gp.GRB.BINARY, name = f"Centrale Hydro {Y} fonctionne à l'heure {t}")
             dict_Hstart[Y,t] = model.addVar(vtype=gp.GRB.BINARY, name = f"Centrale Hydro {Y} démarre à l'heure {t}")
 
-        return dict_H, dict_Hstart
+    return dict_H, dict_Hstart
 
+def contraintes_hydraulique(model,dict_Hstart,dict_H,dict_Hydro):
+    heure = np.arange(24)
+    for t in range(24):
+        for Y in dict_Hydro:
+            model.addConstr(dict_Hstart[Y,t]<=dict_H[Y,t], name = f"Le nombre de centrale {Y} en fonctionnement supérieur au nombre démarré à {t}")
+            model.addConstr(dict_H[Y,t] <= dict_Hstart[Y,t] + dict_H[Y,heure[t-1]], name = f"Nombre max de centrale {Y} démarrable à {t}")
+
+def contraintes_equilibre_avec_hydro(model,dict_H,dict_P,dict_Thermique,dict_Hydro,consommation):
+    for t in range(24):
+        model.addConstr(gp.quicksum([dict_P[X,t] for X in dict_Thermique])+gp.quicksum(dict_H[Y,t]*dict_Hydro[Y].P for Y in dict_Hydro)==consommation[t], name = f"Equilibre offre-demande à l'instant {t}")
+
+def contraintes_reserve_avec_hydro(model,dict_N,dict_Thermique,dict_Hydro,consommation):
+    for t in range(24):
+        model.addConstr(
+            gp.quicksum([dict_N[X,t]*dict_Thermique[X].Pmax for X in dict_Thermique]) + 
+            gp.quicksum([dict_Hydro[Y].P for Y in dict_Hydro])>= 1.15 * consommation[t], 
+            name = f"Réserve de puissance à {t}")
+
+# 5.2 ###############################################################################
+
+def contraintes_reservoir(model,dict_S,dict_Hydro,dict_H,debit_S):
+    model.addConstr(
+        gp.quicksum([dict_S[t] * debit_S - gp.quicksum([dict_H[Y,t] * dict_Hydro[Y].debit for Y in dict_Hydro]) for t in range(24)])==0,
+        name="Equilibre niveau réservoir"
+    )
+
+def contraintes_equilibre_avec_STEP(model,dict_H,dict_P,dict_Thermique,dict_Hydro,dict_S,consommation):
+    for t in range(24):
+        model.addConstr(
+        gp.quicksum([dict_P[X,t] for X in dict_Thermique])+gp.quicksum(dict_H[Y,t]*dict_Hydro[Y].P for Y in dict_Hydro) - dict_S[t] ==consommation[t], 
+        name = f"Equilibre offre-demande à l'instant {t}")
+
+# 5.3 ###############################################################################
+
+class Centrale_hydro2:
+    def __init__(self, name, P, Cstart, Cheure, Palier, debit):
+        self.name = name
+        self.P = P
+        self.Cstart = Cstart
+        self.Cheure = Cheure
+        self.Palier = Palier
+        self.debit = debit
+    def palier_max(self):
+        return max(self.Palier)
+
+def variables_decision_hydraulique_palier(model,dict_Hydro):
+    dict_H = {}
+    dict_Hstart = {}
+    for Y in dict_Hydro:
+        for t in range(24):
+            dict_Hstart[Y,t] = model.addVar(vtype=gp.GRB.BINARY, name = f"Centrale Hydro {Y} démarre à l'heure {t}")
+            for n in dict_Hydro[Y].Palier:
+                dict_H[Y,n,t] = model.addVar(vtype=gp.GRB.BINARY, name = f"Centrale Hydro {Y} fonctionne au palier {n} à l'instant {t}")
+    return dict_H, dict_Hstart
+
+
+def contraintes_equilibre_palier(model,dict_P,dict_Thermique,dict_H,dict_Hydro,dict_S,consommation):
+    for t in range(24):
+        model.addConstr(
+            gp.quicksum([dict_P[X,t] for X in dict_Thermique])+
+            gp.quicksum([gp.quicksum([dict_H[Y,n,t]*dict_Hydro[Y].P[n] for n in dict_Hydro[Y].Palier]) for Y in dict_Hydro])
+            -dict_S[t] == consommation[t],
+            name = f"Equilibre offre-demande à l'instant {t}")
+
+def contraintes_reserve_palier(model,dict_N,dict_Thermique,dict_Hydro,consommation):
+    for t in range(24):
+        model.addConstr(
+            gp.quicksum([dict_N[X,t]*dict_Thermique[X].Pmax for X in dict_Thermique]) + 
+            gp.quicksum([dict_Hydro[Y].P[dict_Hydro[Y].palier_max()] for Y in dict_Hydro])>= 1.15 * consommation[t], 
+            name = f"Réserve de puissance à {t}"
+        )
+
+def contraintes_reservoir_palier(model,dict_H,dict_Hydro,dict_S,debit_S):
+    model.addConstr(
+    gp.quicksum([dict_S[t] * debit_S - gp.quicksum([gp.quicksum([dict_H[Y,n,t] * dict_Hydro[Y].debit[n] for n in dict_Hydro[Y].Palier]) for Y in dict_Hydro]) for t in range(24)])==0,
+    name="Equilibre niveau réservoir"
+    )
+
+def contraintes_hydraulique_palier(model,dict_H,dict_Hydro,dict_Hstart):
+    for t in range(24):
+        for Y in dict_Hydro:
+            model.addConstr(
+                gp.quicksum([dict_H[Y,n,t] for n in dict_Hydro[Y].Palier])<=1,
+                name = f"Un seul palier en fonctionnement {t,Y}"
+            )
+            for n in dict_Hydro[Y].Palier:
+                model.addConstr(
+                    dict_H[Y,n,t] <= gp.quicksum([dict_H[Y,n,t] for n in dict_Hydro[Y].Palier]) + dict_Hstart[Y,t]
+                )
