@@ -31,7 +31,6 @@ def variable_decision_thermique(model,dict_Thermique):
     for t in range(24):
         for X in dict_Thermique:
             dict_N[X,t] = model.addVar(lb=0,ub=dict_Thermique[X].N,vtype=gp.GRB.INTEGER,name=f"Nombre de centrale {X} allumées à {t}h")
-        for X in dict_Thermique:
             dict_P[X,t] = model.addVar(name=f"Puissance totale {X} à {t}h")
     return dict_N, dict_P
 
@@ -207,3 +206,71 @@ def contraintes_hydraulique_palier(model,dict_H,dict_Hydro,dict_Hstart):
                 model.addConstr(
                     dict_H[Y,n,t] <= gp.quicksum([dict_H[Y,n,t] for n in dict_Hydro[Y].Palier]) + dict_Hstart[Y,t]
                 )
+
+# 5.4 ###############################################################################
+
+def contraintes_hydraulique_pompage(model,dict_H,dict_Hydro,dict_N_s,dict_S,M):
+    for t in range(24):
+        model.addConstr(
+            gp.quicksum([dict_H[Y,n,t] for Y in dict_Hydro for n in dict_Hydro[Y].Palier])/len(dict_Hydro) <= 1 - dict_N_s[t],
+            name=f"Contrainte pompage selon fonctionnement hydro à {t}"
+        )
+        model.addConstr(
+            dict_S[t] <= M * dict_N_s[t],
+            name=f"Contrainte fonctionnement pompage à {t}"
+        )
+
+
+#####################################################################################
+# Partie 6
+#####################################################################################
+
+# 6.1 ###############################################################################
+
+def variables_decision_desagregation_thermique(model,dict_Thermique):
+    '''
+    Explique la fonction
+    model : model gurobi d'entrée
+    dict
+    '''  
+    dict_N = {}
+    dict_P = {}
+    dict_Nstart = {}
+    for t in range(24):
+        for X in dict_Thermique:
+            for k in range(dict_Thermique[X].N):
+                dict_N[X,k,t] = model.addVar(vtype=gp.GRB.BINARY,name=f"centrale {X,k} fonctionne à {t}h")
+                dict_P[X,k,t] = model.addVar(name=f"Puissance {X,k} à {t}h")
+                dict_Nstart[X,k,t] = model.addVar(vtype=gp.GRB.BINARY,name=f"centrale {X,k} démarre à {t}h")
+    return dict_N, dict_P, dict_Nstart
+
+def contraintes_thermique_desagregation(model,dict_P,dict_N,dict_Nstart,dict_Thermique):
+    heure = np.arange(24)
+    for t in range(24):
+        for X in dict_Thermique:
+            for k in range(dict_Thermique[X].N):
+                model.addConstr(
+                    dict_P[X,k,t] <= dict_N[X,k,t] * dict_Thermique[X].Pmax, name=f"borne sup puissance {X,k,t}"
+                )
+                model.addConstr(
+                    dict_P[X,k,t] >= dict_N[X,k,t] * dict_Thermique[X].Pmin, name=f"borne inf puissance {X,k,t}"
+                )
+                model.addConstr(
+                    dict_N[X,k,t] <= dict_N[X,k,heure[t-1]] + dict_Nstart[X,k,t],name=f"Contrainte démarrage {X,k,t}"
+                )
+
+def contraintes_equilibre_desagregation(model,dict_P,dict_Thermique,dict_H,dict_Hydro,dict_S,consommation):
+    for t in range(24):
+        model.addConstr(
+            gp.quicksum([dict_P[X,k,t] for X in dict_Thermique for k in range(dict_Thermique[X].N)])+
+            gp.quicksum([dict_H[Y,n,t] * dict_Hydro[Y].P[n] for Y in dict_Hydro for n in dict_Hydro[Y].Palier])-
+            dict_S[t] == consommation[t], name=f"équilibre offre-demande à {t}"
+        )
+
+def contraintes_reserve_desagregation(model,dict_N,dict_Thermique,dict_Hydro,consommation):
+    for t in range(24):
+        model.addConstr(
+            gp.quicksum([dict_N[X,k,t]*dict_Thermique[X].Pmax for X in dict_Thermique for k in range(dict_Thermique[X].N)]) + 
+            gp.quicksum([dict_Hydro[Y].P[dict_Hydro[Y].palier_max()] for Y in dict_Hydro])>= 1.15 * consommation[t], 
+            name = f"Réserve de puissance à {t}"
+        )
