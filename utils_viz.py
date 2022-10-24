@@ -306,6 +306,42 @@ def df_results53(dict_N,dict_P,dict_Nstart,dict_Thermique,dict_H,dict_Hstart,dic
     df["Coût MWh"] = df["Coût total"]/df["Production total"]
     return df
 
+def df_results61(dict_N,dict_P,dict_Nstart,dict_Thermique,dict_H,dict_Hstart,dict_Hydro,dict_S,debit_S,consommation):
+    df = pd.DataFrame()
+    df["h"] = range(24) 
+    df["Consommation (MW)"] = consommation
+    df["Production total"] = 0
+    df["Coût total"] = 0
+    for X in dict_Thermique:
+        for k in range(dict_Thermique[X].N):
+            df[f"centrale {X,k}"] = [int(dict_N[X,k,t].X) for t in range(24)]
+            df[f"Puissance {X,k}"] = [dict_P[X,k,t].X for t in range(24)]
+            df[f"Coût {X,k}"] = [dict_N[X,k,t].X * dict_Thermique[X].Cbase + (dict_P[X,k,t].X - dict_N[X,k,t].X * dict_Thermique[X].Pmin) * dict_Thermique[X].Cmwh + dict_Nstart[X,k,t].X*dict_Thermique[X].Cstart for t in range(24)]
+            df["Production total"] += df[f"Puissance {X,k}"]
+            df["Coût total"] += df[f"Coût {X,k}"]
+        df[f"Puissance tot {X}"] = df[[f"Puissance {X,k}" for k in range(dict_Thermique[X].N)]].sum(1)
+    for Y in dict_Hydro:
+        for n in dict_Hydro[Y].Palier:
+            df[f"Fonctionnement {Y}, palier {n}"] = [dict_H[Y,n,t].X for t in range(24)]
+            df[f"Puissance tot {Y}, palier {n}"] = [dict_H[Y,n,t].X * dict_Hydro[Y].P[n] for t in range(24)]
+            df[f"Coût {Y}, palier {n}"] = [dict_H[Y,n,t].X * dict_Hydro[Y].Cheure[n] for t in range(24)]
+        df[f"Démarrage {Y}"] = [dict_Hstart[Y,t].X for t in range(24)]
+        df[f"Fonctionnement {Y}"] = [sum(dict_H[Y,n,t].X for n in dict_Hydro[Y].Palier) for t in range(24)]
+        df[f"Puissance tot {Y}"] = df[[f"Puissance tot {Y}, palier {n}" for n in dict_Hydro[Y].Palier]].sum(1)
+        df[f"Coût {Y}"] = df[[f"Coût {Y}, palier {n}" for n in dict_Hydro[Y].Palier]].sum(1) + pd.DataFrame([dict_Hstart[Y,t].X * dict_Hydro[Y].Cstart for t in range(24)])[0]
+        df["Production total"] += df[f"Puissance tot {Y}"]
+        df["Coût total"] += df[f"Coût {Y}"]
+    df["Pompage"] = [-dict_S[t].X for t in range(24)]
+    df["Production total"] += df["Pompage"]
+    df["Réservoir variation"] = [dict_S[t].X * debit_S - sum([dict_H[Y,n,t].X * dict_Hydro[Y].debit[n] for Y in dict_Hydro for n in dict_Hydro[Y].Palier]) for t in range(24)]
+    df["Réservoir"] = df["Réservoir variation"].cumsum()
+    df["Coût MWh"] = df["Coût total"]/df["Production total"]
+    return df
+
+
+    
+    
+
 
 
 

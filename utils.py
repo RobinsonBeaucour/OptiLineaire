@@ -172,7 +172,6 @@ def variables_decision_hydraulique_palier(model,dict_Hydro):
                 dict_H[Y,n,t] = model.addVar(vtype=gp.GRB.BINARY, name = f"Centrale Hydro {Y} fonctionne au palier {n} à l'instant {t}")
     return dict_H, dict_Hstart
 
-
 def contraintes_equilibre_palier(model,dict_P,dict_Thermique,dict_H,dict_Hydro,dict_S,consommation):
     for t in range(24):
         model.addConstr(
@@ -219,7 +218,6 @@ def contraintes_hydraulique_pompage(model,dict_H,dict_Hydro,dict_N_s,dict_S,M):
             dict_S[t] <= M * dict_N_s[t],
             name=f"Contrainte fonctionnement pompage à {t}"
         )
-
 
 #####################################################################################
 # Partie 6
@@ -274,3 +272,51 @@ def contraintes_reserve_desagregation(model,dict_N,dict_Thermique,dict_Hydro,con
             gp.quicksum([dict_Hydro[Y].P[dict_Hydro[Y].palier_max()] for Y in dict_Hydro])>= 1.15 * consommation[t], 
             name = f"Réserve de puissance à {t}"
         )
+
+#####################################################################################
+# Partie 7
+#####################################################################################
+
+# 7.1 ###############################################################################
+
+
+#####################################################################################
+# Partie 8
+#####################################################################################
+
+# 8.1 ###############################################################################
+
+class Centrale3:
+    def __init__(self, name, N, Pmin, Pmax, Cstart, Cbase, Cmwh, Rampe_Montante, Rampe_Start, Rampe_Descendante, Rampe_Stop):
+        self.name = name
+        self.N = N
+        self.Pmin = Pmin
+        self.Pmax = Pmax
+        self.Cstart = Cstart
+        self.Cbase = Cbase
+        self.Cmwh = Cmwh
+        self.Rampe_Montante = Rampe_Montante
+        self.Rampe_Descendante = Rampe_Descendante
+        self.Rampe_Start = Rampe_Start
+        self.Rampe_Stop = Rampe_Stop
+
+def contraintes_rampes(model,dict_P,dict_N,dict_Thermique):
+    heure = np.arange(24)
+    for t in range(24):
+        for X in dict_Thermique:
+            for k in range(dict_Thermique[X].N):
+                model.addConstr(
+                    dict_P[X,k,t]-dict_P[X,k,heure[t-1]]<=dict_Thermique[X].Rampe_Montante + (dict_N[X,k,t]-dict_N[X,k,heure[t-1]])*(dict_Thermique[X].Rampe_Start-dict_Thermique[X].Rampe_Montante),
+                    name= f"Contraintes montantes {X,k}, à {t}"
+                    )
+                model.addConstr(
+                    dict_P[X,k,t]-dict_P[X,k,heure[t-1]]>=-dict_Thermique[X].Rampe_Montante + (dict_N[X,k,t]-dict_N[X,k,heure[t-1]])*(dict_Thermique[X].Rampe_Start-dict_Thermique[X].Rampe_Montante),
+                    name= f"Contraintes descendantes {X,k}, à {t}"
+                    )
+
+
+
+
+
+
+
