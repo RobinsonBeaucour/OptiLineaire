@@ -121,8 +121,8 @@ def contraintes_hydraulique(model,dict_Hstart,dict_H,dict_Hydro):
     heure = np.arange(24)
     for t in range(24):
         for Y in dict_Hydro:
-            model.addConstr(dict_Hstart[Y,t]<=dict_H[Y,t], name = f"Le nombre de centrale {Y} en fonctionnement supérieur au nombre démarré à {t}")
-            model.addConstr(dict_H[Y,t] <= dict_Hstart[Y,t] + dict_H[Y,heure[t-1]], name = f"Nombre max de centrale {Y} démarrable à {t}")
+            # model.addConstr(dict_Hstart[Y,t]<=dict_H[Y,t], name = f"Le nombre de centrale {Y} en fonctionnement supérieur au nombre démarré à {t}")
+            model.addConstr(dict_H[Y,t] <= dict_Hstart[Y,t] + dict_H[Y,heure[t-1]], name = f"Contrainte centrale {Y} fonctionnant à {t}")
 
 def contraintes_equilibre_avec_hydro(model,dict_H,dict_P,dict_Thermique,dict_Hydro,consommation):
     for t in range(24):
