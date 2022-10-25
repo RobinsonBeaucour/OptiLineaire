@@ -195,6 +195,7 @@ def contraintes_reservoir_palier(model,dict_H,dict_Hydro,dict_S,debit_S):
     )
 
 def contraintes_hydraulique_palier(model,dict_H,dict_Hydro,dict_Hstart):
+    heures = np.arange(24)
     for t in range(24):
         for Y in dict_Hydro:
             model.addConstr(
@@ -203,7 +204,7 @@ def contraintes_hydraulique_palier(model,dict_H,dict_Hydro,dict_Hstart):
             )
             for n in dict_Hydro[Y].Palier:
                 model.addConstr(
-                    dict_H[Y,n,t] <= gp.quicksum([dict_H[Y,n,t] for n in dict_Hydro[Y].Palier]) + dict_Hstart[Y,t]
+                    gp.quicksum([dict_H[Y,n,t] for n in dict_Hydro[Y].Palier]) <= gp.quicksum([dict_H[Y,n,heures[t-1]] for n in dict_Hydro[Y].Palier]) + dict_Hstart[Y,t]
                 )
 
 # 5.4 ###############################################################################

@@ -62,6 +62,13 @@ def Results_viz(df,dict_Thermique):
     )
 
     fig.update_layout(
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+            ),
         hovermode='x',
         yaxis=dict(title="MW" ,range=[0,df["Consommation (MW)"].max()*1.1]),
         yaxis2=dict(title="€/MWh",
@@ -98,6 +105,7 @@ def df_results22(dict_N,dict_P,dict_Nstart,dict_XX,consommation):
     df["Coût total"] = 0
     for X in dict_XX:
         df[f"Nb centrale {X}"] = [int(dict_N[X,t].X) for t in range(24)]
+        df[f"Nb centrale démarées {X}"] = [int(dict_Nstart[X,t].X) for t in range(24)]
         df[f"Puissance tot {X}"] = [dict_P[X,t].X for t in range(24)]
         df[f"Coût {X}"] = [dict_N[X,t].X * dict_XX[X].Cbase + (dict_P[X,t].X - dict_N[X,t].X * dict_XX[X].Pmin) * dict_XX[X].Cmwh + dict_Nstart[X,t].X*dict_XX[X].Cstart for t in range(24)]
         df["Production total"] += df[f"Puissance tot {X}"]
@@ -108,6 +116,7 @@ def df_results22(dict_N,dict_P,dict_Nstart,dict_XX,consommation):
 def df_results5(dict_N,dict_P,dict_Nstart,dict_Thermique,dict_H,dict_Hstart,dict_Hydro,consommation):
     df = df_results22(dict_N,dict_P,dict_Nstart,dict_Thermique,consommation)
     for Y in dict_Hydro:
+        df[f"Démarrage {Y}"] = [dict_Hstart[Y,t].X for t in range(24)]
         df[f"Fonctionnement {Y}"] = [dict_H[Y,t].X for t in range(24)]
         df[f"Puissance tot {Y}"] = [dict_H[Y,t].X * dict_Hydro[Y].P for t in range(24)]
         df[f"Coût {Y}"] = [dict_H[Y,t].X * dict_Hydro[Y].Cheure + dict_Hstart[Y,t].X * dict_Hydro[Y].Cstart for t in range(24)]
@@ -157,6 +166,13 @@ def Results_viz5(df,dict_Thermique,dict_Hydro):
     )
 
     fig.update_layout(
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.02,
+            xanchor="right",
+            x=1
+            ),
         hovermode='x',
         yaxis=dict(title="MW" ,range=[0,df["Consommation (MW)"].max()*1.1]),
         yaxis2=dict(title="€/MWh",
@@ -178,6 +194,7 @@ def df_results52(dict_N,dict_P,dict_Nstart,dict_Thermique,dict_H,dict_Hstart,dic
     df["Coût total"] = 0
     for X in dict_Thermique:
         df[f"Nb centrale {X}"] = [int(dict_N[X,t].X) for t in range(24)]
+        df[f"Nb centrale démarées {X}"] = [int(dict_Nstart[X,t].X) for t in range(24)]
         df[f"Puissance tot {X}"] = [dict_P[X,t].X for t in range(24)]
         df[f"Coût {X}"] = [dict_N[X,t].X * dict_Thermique[X].Cbase + (dict_P[X,t].X - dict_N[X,t].X * dict_Thermique[X].Pmin) * dict_Thermique[X].Cmwh + dict_Nstart[X,t].X*dict_Thermique[X].Cstart for t in range(24)]
         df["Production total"] += df[f"Puissance tot {X}"]
@@ -254,25 +271,35 @@ def Results_viz52(df,dict_Thermique,dict_Hydro):
     )
 
     fig.update_layout(
-        hovermode='x',
-        yaxis=dict(title="MW" ,range=[df["Pompage"].min()*1.1,df["Consommation (MW)"].max()*1.1]),
-        yaxis2=dict(
-            title="€/MWh",
-            range=[df["Coût MWh"].min()*0.95,df["Coût MWh"].max()*1.1],
-            anchor="free",
-            overlaying="y",
-            side="right",
-            position=1
-            ),
-        yaxis3=dict(
-            title="Réservoir (m)",
-            range=[df["Réservoir"].min()*1.1,df["Réservoir"].max()*1.1],
-            anchor="free",
-            overlaying="y",
-            side="left",
-            position=0.05
-            ),
-        title = "Répartition de la production électrique dans la journée"
+    xaxis=dict(
+        domain=[0.1, 1]
+    ),
+    legend=dict(
+        orientation="h",
+        yanchor="bottom",
+        y=1.02,
+        xanchor="right",
+        x=1
+        ),
+    hovermode='x',
+    yaxis=dict(title="MW" ,range=[df["Pompage"].min()*1.1,df["Consommation (MW)"].max()*1.1]),
+    yaxis2=dict(
+        title="€/MWh",
+        range=[1,2.5],
+        anchor="free",
+        overlaying="y",
+        side="right",
+        position=1
+        ),
+    yaxis3=dict(
+        title="Réservoir (m)",
+        range=[-5,10],
+        anchor="free",
+        overlaying="y",
+        side="left",
+        position=0.05
+        ),
+    title = "Répartition de la production électrique dans la journée"
     )
     return fig
 
@@ -340,7 +367,7 @@ def df_results61(dict_N,dict_P,dict_Nstart,dict_Thermique,dict_H,dict_Hstart,dic
 
 
     
-    
+
 
 
 
