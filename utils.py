@@ -418,7 +418,7 @@ class Centrale3:
         self.Rampe_Start = Rampe_Start
         self.Rampe_Stop = Rampe_Stop
 
-def contraintes_rampes(model,dict_P,dict_N,dict_Thermique):
+def contraintes_rampes(model,dict_P,dict_N,dict_Nstart,dict_Thermique):
     '''
     Ajoute les contraintes de rampes au modèle
     '''
@@ -428,7 +428,7 @@ def contraintes_rampes(model,dict_P,dict_N,dict_Thermique):
             for k in range(dict_Thermique[X].N):
                     # 8.2
                 model.addConstr(
-                    dict_P[X,k,t]-dict_P[X,k,heure[t-1]]<=dict_Thermique[X].Rampe_Montante + dict_N[X,k,t]*(dict_Thermique[X].Rampe_Start-dict_Thermique[X].Rampe_Montante),
+                    dict_P[X,k,t]-dict_P[X,k,heure[t-1]]<=dict_Thermique[X].Rampe_Montante + dict_Nstart[X,k,t]*(dict_Thermique[X].Rampe_Start-dict_Thermique[X].Rampe_Montante),
                     name= f"Contraintes montantes {X,k}, à {t}"
                     )
                     #8.3
