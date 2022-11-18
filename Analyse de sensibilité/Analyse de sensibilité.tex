@@ -1,0 +1,485 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{geometry}
+\usepackage{stmaryrd}
+\usepackage[table]{xcolor}
+\usepackage{fancybox}
+
+
+\geometry{a4paper,left=25mm,right=25mm,top=20mm}
+\title{Analyse de sensibilité - Optimisation linéaire}
+\author{Robinson Beaucour}
+\date{Octobre 2022}
+
+\begin{document}
+
+\maketitle
+
+\section{Problème à résoudre}
+On cherche à minimiser le coût de production d'électricité sur une journée.
+Les données du problèmes sont ci-dessous.
+\rowcolors{2}{lightgray}{gray}
+\begin{center}
+\begin{tabular}{|m{3cm}|m{5.5cm}|m{3cm}|}
+    \hline
+    \bf Nom & \bf Description & \bf Type de variable \\
+    \hline 
+    $t$ & heure de la journée & indice \\
+    $X\in\{A,B,C\}$ & type de centrale & indice \\
+    $n^{(X)}$ & nombre de centrales de type $X$ & constante \\
+    $C^{(X)}_{MWh}$ & Coût de production d'un MWh par une centrale de type $X$ & constante\\
+    $P^{(X)}_{max}$ & La puissance maximale d'une centrale de type $X$ & constante\\
+    $P^{(X)}_{t}$ & La puissance totale des centrales de type $X$ à l'heure $t$ & variable de décision\\
+    \hline
+\end{tabular}\\[0.1cm]
+\centering \it Récapitulatif des variables du problème\\[0.1cm]
+\begin{tabular}{|c|c|c|c|}
+    \hline
+    \bf Type & \bf $N$ & \bf $P_{max}$ (MW) & \bf $C_{MWh}$ \\
+    \hline 
+    A & 12 & 2000 & 1.50 \\
+    B & 10 & 1750 & 1.38 \\
+    C & 5 & 4000 & 2.75 \\
+    \hline
+\end{tabular}\\[0.1cm]
+\centering \it Données des centrales du parc\\[0.1cm]
+\begin{tabular}{|c|c|c|c|c|c|}
+    \hline
+    \bf Heure &0-5&6-8&9-14&15-17&18-23\\
+    \hline 
+    \bf Consommation(GW) &15&30&25&40&27\\
+    \hline
+\end{tabular}\\[0.1cm]
+\it Données de consommation\\[0.1cm]
+\end{center}
+On a le problème $\mathcal{P}$ d'optimisation linéaire suivant:
+$$
+\underset{\forall t, \forall X, P_t^{(X)}\geq 0}{minimize}~ \sum_{t=0}^{23}\sum_{X\in\{A,B,C\}} P_t^{(X)}.C_{MWh}^{(X)}
+$$
+\rowcolors{0}{}{}
+$$
+subject~to~ 
+\left\{\begin{array}{l}
+\forall t \in \llbracket 0,23 \rrbracket,\forall X \in \{A,B,C\},  \\ 
+\forall t \in \llbracket 0,23 \rrbracket,  
+\end{array}\right.
+\left.\begin{array}{l}
+P_t^{(X)} \leq n^{(X)} P_{max}^{(X)} \\ 
+\underset{X \in \{A,B,C\}}{\sum} P_t^{(X)}\geq d_t
+\end{array}\right.
+$$
+On note $\mathcal{P}_{standard}$ un forme standard du problème $\mathcal{P}$ définit par:\\
+$$
+\underset{P_t^{(X)}\geq 0, S_t^{(X)}\geq 0,S_t^{(d)}\geq 0}{minimize}~~ \sum_{t=0}^{23}\sum_{X\in\{A,B,C\}} P_t^{(X)}.C_{MWh}^{(X)}
+$$
+\rowcolors{0}{}{}
+$$
+subject~to~ 
+\left\{\begin{array}{l}
+\forall t \in \llbracket 0,23 \rrbracket,\forall X \in \{A,B,C\},  \\ 
+\forall t \in \llbracket 0,23 \rrbracket,  
+\end{array}\right.
+\left.\begin{array}{l}
+P_t^{(X)} + S_t^{(X)} = n^{(X)} P_{max}^{(X)} \\ 
+\underset{X \in \{A,B,C\}}{\sum} P_t^{(X)} - S_t^{(d)} =  d_t
+\end{array}\right.
+$$
+On pose $X\in \mathbb{R}^{24\cdot7}$, la matrice de blocs de taille $7\times1$.\\
+On pose $C\in \mathbb{R}^{24\cdot7}$, la matrice de blocs de taille $7\times1$.\\
+On pose $B\in \mathbb{R}^{24\cdot4}$, la matrice de blocs de taille $4\times1$.\\
+Dont les blocs sont définis par :
+$$
+X_t = \left(
+\begin{array}{ccccccc}
+    P^{(A)}_t\\P^{(B)}_t\\P^{(C)}_t\\S^{(A)}_t\\S^{(B)}_t\\S^{(C)}_t\\S^{(d)}_t
+\end{array}
+\right),
+C_t =\left(
+\begin{array}{ccccccc}
+    C_{MWh}^{(A)}\\C_{MWh}^{(B)}\\C_{MWh}^{(C)}\\0\\0\\0\\0
+\end{array}
+\right),
+B_t =\left(
+\begin{array}{ccccccc}
+    P^{(A)}_{max}n^{(A)}\\P^{(B)}_{max}n^{(B)}\\P^{(C)}_{max}n^{(C)}\\d_t
+\end{array}
+\right),
+$$
+Enfin on pose $A \in \mathbb{R}^{24\cdot4\times24\cdot7}$, la matrice bloc de taille $4\times7$ :\\[0.2cm]
+$$
+A_{t,t'} = 0 \text{ si $t\neq t'$}
+$$
+$$
+A_{t,t'} = \left(
+\begin{array}{ccccccc}
+    1 & 0 & 0 & 1 & 0 & 0 & 0 \\
+    0 & 1 & 0 & 0 & 1 & 0 & 0 \\
+    0 & 0 & 1 & 0 & 0 & 1 & 0 \\
+    1 & 1 & 1 & 0 & 0 & 0 & -1 
+\end{array}
+\right) \text{ si $t=t'$}
+$$
+La matrice $A$ est diagonale par bloc.
+$\mathcal{P}_{standard}$ peut maintenant s'écrire : 
+$$
+\underset{X\geq 0}{minimize}~ X\cdot C^{\top}
+$$
+$$
+subject~to~ A \cdot X = B
+$$
+\begin{center}
+    nb\section{Base optimale}
+    \boxput*(0,1){
+        \colorbox{white}{Rappel de cours}
+    }{
+    \setlength{\fboxsep}{15pt}
+    \fbox{\begin{minipage}{12cm} 
+    Soit $\mathcal{P}$ et sa forme standard $\mathcal{P}_{standard}:~min\{cx | Ax = B, x\geq 0\}$.\\
+    $\beta$ est une base optimale si et seulement si :\\
+    $$
+    \left.
+    \begin{array}{ccc}
+        x_{\beta} &= &A_{\beta}^{-1}b \geq 0, x_{\neg\beta}=0 \\[0.1cm]
+        u &= &  c_{\beta}^{\top}A_{\beta}^{-1} \\[0.1cm]
+        \overline{c}^{\top} &= &  c^{\top} - u^{\top} A \geq 0
+    \end{array}
+    \right.
+    $$
+    \end{minipage}}
+    }
+\end{center}
+
+On note $\beta_t = (t+1,t+3,t+4,t+5)$ si $t\in \llbracket 0,5 \rrbracket$, $\beta_t = (t,t+1,t+3,t+5)$ sinon. Nous allons montrer que $\beta=\underset{t\in\llbracket 0,23 \rrbracket}{\bigcup}\beta_t$ est une base optimale de $\mathcal{P}_{standard}$.\\
+On peut deviner la base grâce aux équivalences suivantes : 
+$$
+\left.
+    \begin{array}{ccc}
+        t \text{ appartient à la base}& \Leftrightarrow P_t^{(A)} \text{ est non nul*} &\equiv \text{ Les centrales $A$ produisent à $t$}\\
+        t+1 \text{ appartient à la base}& \Leftrightarrow P_t^{(B)} \text{ est non nul*} &\equiv \text{ Les centrales $B$ produisent à $t$}\\
+        t+2 \text{ appartient à la base}& \Leftrightarrow P_t^{(C)} \text{ est non nul*} &\equiv \text{ Les centrales $C$ produisent à $t$}\\
+        t+3 \text{ appartient à la base}& \Leftrightarrow S_t^{(A)} \text{ est non nul*} &\equiv \text{ Les centrales $A$ ne produisent pas au max possible à $t$}\\
+        t+4 \text{ appartient à la base}& \Leftrightarrow S_t^{(B)} \text{ est non nul*} &\equiv \text{ Les centrales $B$ ne produisent pas au max possible à $t$}\\
+        t+5 \text{ appartient à la base}& \Leftrightarrow S_t^{(C)} \text{ est non nul*} &\equiv \text{ Les centrales $C$ ne produisent pas au max possible à $t$}\\
+        t+6 \text{ appartient à la base}& \Leftrightarrow S_t^{(d)} \text{ est non nul*} &\equiv \text{ Les centrales produisent plus que la demande à $t$}
+    \end{array}
+\right.
+$$
+* Sauf si la solution est dégénérée.\\[0.2cm]
+On peut raisonner séparément pour chaque $t$ car la matrice $A$ est diagonale par bloc.\\
+Pout $t \in \llbracket 0,5 \rrbracket$,\\
+$$
+A_{t|\beta} = 
+\left(
+\begin{array}{cccc}
+    0 & 1 & 0 & 0 \\
+    1 & 0 & 1 & 0 \\
+    0 & 0 & 0 & 1 \\
+    1 & 0 & 0 & 0 
+\end{array}
+\right)
+,
+A_{t|\beta}^{-1} = 
+\left(
+\begin{array}{cccc}
+    0 & 0 & 0 & 1 \\
+    1 & 0 & 0 & 0 \\
+    0 & 1 & 0 & -1 \\
+    0 & 0 & 1 & 0 
+\end{array}
+\right)
+$$
+On calcule :
+$$
+X_{t|\beta} = \left(
+\begin{array}{c}
+    d_t \\
+    n^{(A)}P_{max}^{(A)} \\
+    n^{(B)}P_{max}^{(B)} - d_t \\
+    n^{(C)}P_{max}^{(C)} \\
+\end{array}
+\right)\geq 0
+,
+U_t = \left(
+\begin{array}{c}
+    0 \\
+    0 \\
+    0 \\
+    C_{MWh}^{(B)} \\
+\end{array}
+\right),
+\overline{C}_t=\left(
+\begin{array}{c}
+    0 \\
+    C_{MWh}^{(A)} - C_{MWh}^{(B)} \\
+    C_{MWh}^{(C)} - C_{MWh}^{(B)} \\
+    0 \\
+    0 \\
+    0 \\
+    C_{MWh}^{(B)}
+\end{array}
+\right)\geq 0
+$$
+Pout $t \in \llbracket 6,23 \rrbracket$,\\
+$$
+A_{t|\beta} = 
+\left(
+\begin{array}{cccc}
+    1 & 0 & 1 & 0 \\
+    0 & 1 & 0 & 0 \\
+    0 & 0 & 0 & 1 \\
+    1 & 1 & 0 & 0 
+\end{array}
+\right)
+,
+A_{t|\beta}^{-1} = 
+\left(
+\begin{array}{cccc}
+    0 & -1 & 0 & 1 \\
+    0 & 1 & 0 & 0 \\
+    1 & 1 & 0 & -1 \\
+    0 & 0 & 1 & 0 
+\end{array}
+\right)
+$$
+
+On calcule :
+$$
+X_{t|\beta} = \left(
+\begin{array}{c}
+    d_t - n^{(B)}P_{max}^{(B)} \\
+    n^{(B)}P_{max}^{(B)} \\
+    n^{(A)}P_{max}^{(A)}+n^{(B)}P_{max}^{(B)} - d_t \\
+    n^{(C)}P_{max}^{(C)} \\
+\end{array}
+\right)\geq 0
+,
+U_t = \left(
+\begin{array}{c}
+    0 \\
+    C_{MWh}^{(B)}-C_{MWh}^{(A)} \\
+    0 \\
+    C_{MWh}^{(A)} \\
+\end{array}
+\right),
+\overline{C}_t=\left(
+\begin{array}{c}
+    0 \\
+    0 \\
+    C_{MWh}^{(C)} - C_{MWh}^{(A)} \\
+    0 \\
+    0 \\
+    C_{MWh}^{(A)} - C_{MWh}^{(B)} \\
+    C_{MWh}^{(A)}
+\end{array}
+\right)\geq 0
+$$
+
+\begin{center}
+    \framebox[1.1\width]{On a vérifié que $X_{\beta}\geq 0,\overline{C}\geq 0$. $\beta$ est une base optimale.}
+\end{center}
+\section{Analyse de sensibilité}
+\subsection{Dégénérescence}
+Pour tout $t \in\llbracket 0,23 \rrbracket$, $X_{t|\beta} > 0$. La base est donc non-dégénérée.
+Pour que la base soit dégénérée il suffit que une des coordonnées de $X_{\beta}$ soit nulle :\\
+Pour $t\in\llbracket 0,5 \rrbracket$
+$$
+\left.
+\begin{array}{ccc}
+    d_t &= 0&ou\\
+    n^{(A)}P_{max}^{(A)} &= 0&ou \\
+    n^{(B)}P_{max}^{(B)} &= d_t&ou \\
+    n^{(C)}P_{max}^{(C)} & = 0&\\
+\end{array}
+\right.
+$$
+Pour $t\in\llbracket 6,23 \rrbracket$
+$$
+\left.
+\begin{array}{ccc}
+    d_t & = n^{(B)}P_{max}^{(B)} &ou\\
+    n^{(B)}P_{max}^{(B)} & = 0&ou \\
+    n^{(B)}P_{max}^{(B)}+n^{(A)}P_{max}^{(A)} &= d_t&ou \\
+    n^{(C)}P_{max}^{(C)} & = 0&\\
+\end{array}
+\right.
+$$
+On peut donc par exemple mettre $d_t$ ou $n^{(C)}$ à 0. Mais aussi mettre $d_t=n^{(B)}P_{max}^{(B)}$.
+\subsection{Augmentation consommation}
+On suppose que la consommation augmente de $\delta_t\geq0$. $\beta$ reste optimale si $A^{-1}_{\beta}(b+\delta)\geq 0$, c'est à dire:\\
+$$
+\forall t \in \llbracket 0,5 \rrbracket, d_t+\delta_t \leq n^{(B)}P_{max}^{(B)}
+$$
+$$
+\forall t \in \llbracket 5,23 \rrbracket, d_t+\delta_t \leq n^{(B)}P_{max}^{(B)} +n^{(A)}P_{max}^{(A)}
+$$
+Si ces conditions sont respectées, le surcoût peut s'évaluer de cette manière:
+$$
+\text{Surcoût : }u.\delta = \sum_{t\in\llbracket 0,23 \rrbracket} U_t. (0, 0, 0, \delta_t) = \sum_{t\in\llbracket 0,5 \rrbracket} C_{MWh}^{(B)} \delta_t + \sum_{t\in\llbracket 6,23 \rrbracket} C_{MWh}^{(A)} \delta_t
+$$
+Ce qui peut être résumé dans ce tableau:
+\rowcolors{2}{lightgray}{gray}
+\begin{center}
+    \begin{tabular}{|c|c|c|}
+        \hline
+        \bf Période & \bf Surcoût 1 MW par heure & \bf Surcoût max par heure \\
+        \hline 
+        0-5 & 1.38 & 3450 \\
+        6-8 & 1.5 & 17250 \\
+        9-14 & 1.5 & 24750 \\
+        15-17 &1.5 & 2250 \\
+        18-23 & 1.5 & 21750\\
+    \hline
+    \end{tabular}
+\end{center}
+\subsection{Augmentation centrale B}
+Rien ne change sur la \textbf{période 1} si on ajoute une centrale $B$.$P_t^{(B)}$ reste égal à $d_t$\\
+Rappel : 
+\rowcolors{0}{}{}
+$$
+X_{t|\beta} = \left(
+\begin{array}{c}
+    d_t \\
+    n^{(A)}P_{max}^{(A)} \\
+    n^{(B)}P_{max}^{(B)} - d_t \\
+    n^{(C)}P_{max}^{(C)} \\
+\end{array}
+\right)=
+\left(
+\begin{array}{c}
+    15 \\
+    17.5 \\
+    24-15 \\
+    20 \\
+\end{array}
+\right)
+\geq 0
+$$
+Sur la \textbf{période 2}, le coût diminue par une augmentation de $P_t^{(B)}$ et une diminution de $P_t^{(A)}$.
+Après avoir vérifié que : \\
+$$
+X_{t|\beta} = 
+\left(
+\begin{array}{c}
+    d_t - (n^{(B)}+1)P_{max}^{(B)} \\
+    n^{(B)}P_{max}^{(B)} \\
+    n^{(A)}P_{max}^{(A)}+(n^{(B)}+1)P_{max}^{(B)} - d_t \\
+    n^{(C)}P_{max}^{(C)} \\
+\end{array}\right)=
+\left(
+\begin{array}{c}
+    30 - 24 \\
+    24 \\
+    24+17.5 - 30 \\
+    20 \\
+\end{array}\right)
+\geq 0
+$$
+On constate que $P_t^{(A)}$ passe de $d_t - n^{(B)}P_{max}^{(B)}$ à $d_t - (n^{(B)}+1)P_{max}^{(B)}$. et que $P_t^{(B)}$ passe de $n^{(B)}P_{max}^{(B)}$ à $(n^{(B)}+1)P_{max}^{(B)}$.\\
+Le coût varie de $P_{max}^{(B)}\cdot (C_{MWh}^{(B)}-C_{MWh}^{(A)})$ soit 210 d'économies par heure.
+
+\subsection{Diminution Centrale B}
+Rien ne change sur la \textbf{période 1} si on retire une centrale $B$.$P_t^{(B)}$ reste égal à $d_t$ car :\\
+\rowcolors{0}{}{}
+$$
+X_{t|\beta} = \left(
+\begin{array}{c}
+    d_t \\
+    n^{(A)}P_{max}^{(A)} \\
+    (n^{(B)}-1)P_{max}^{(B)} - d_t \\
+    n^{(C)}P_{max}^{(C)} \\
+\end{array}
+\right)=
+\left(
+\begin{array}{c}
+    15 \\
+    17.5 \\
+    24-2-15 \\
+    20 \\
+\end{array}
+\right)
+\geq 0
+$$
+Sur la \textbf{période 2}, le coût diminue par une diminution de $P_t^{(B)}$ et une augmentation de $P_t^{(A)}$.
+Après avoir vérifié que : \\
+$$
+X_{t|\beta} = \left(
+\begin{array}{c}
+    d_t - (n^{(B)}-1)P_{max}^{(B)} \\
+    n^{(B)}P_{max}^{(B)} \\
+    n^{(A)}P_{max}^{(A)}+(n^{(B)}-1)P_{max}^{(B)} - d_t \\
+    n^{(C)}P_{max}^{(C)} \\
+\end{array}
+\right)=
+\left(
+\begin{array}{c}
+    30 - 24 -2 \\
+    24 \\
+   17.5+24-30 \\
+    20 \\
+\end{array}
+\right)
+\geq 0
+$$
+En revanche, sur la \textbf{période 3}, la perte de la centrale B rend la base $\beta$ non optimale car on a:
+$$
+n^{(A)}P_{max}^{(A)}+(n^{(B)}-1)P_{max}^{(B)} - d_t=39.5-40<0
+$$
+\subsection{Diminution coût centrale C}
+Si le coût du MWh des centrales C diminue de 1, la base reste optimale si le coût réduit $\overline{C}$ reste positif. Vérifions :
+$$
+\forall t \in \llbracket 0,5 \rrbracket,\overline{C}_t=
+\left(
+\begin{array}{c}
+    0 \\
+    C_{MWh}^{(A)} - C_{MWh}^{(B)} \\
+    C_{MWh}^{(C)}-1 - C_{MWh}^{(B)} \\
+    0 \\
+    0 \\
+    0 \\
+    C_{MWh}^{(B)}
+\end{array}
+\right)=
+\left(
+\begin{array}{c}
+    0 \\
+    1.50-1.38 \\
+    2.75-1.38 \\
+    0 \\
+    0 \\
+    0 \\
+    1.38
+\end{array}
+\right)
+\geq 0
+$$
+$$
+\forall t \in \llbracket 6,23 \rrbracket,\overline{C}_t=
+\left(
+\begin{array}{c}
+    0 \\
+    0 \\
+    C_{MWh}^{(C)}-1 - C_{MWh}^{(A)} \\
+    0 \\
+    0 \\
+    C_{MWh}^{(A)} - C_{MWh}^{(B)} \\
+    C_{MWh}^{(A)}
+\end{array}
+\right)=
+\left(
+\begin{array}{c}
+    0 \\
+    0 \\
+    2.75-1-1.50 \\
+    0 \\
+    0 \\
+    1.50-1.38 \\
+    1.50
+\end{array}
+\right)
+\geq 0
+$$
+D'après la description de $\overline{C}$, Si $C_{MWh}^{(B)}$ diminue alors $\overline{C}$ reste positif. Ce qui prouve que la base reste optimale.\\
+Le coût du MWh par $B$ peut augmenter jusq'à 1.50 ($=C_{MWh}^{(A)}$) la base $\beta$ restera optimale car on conservera $\overline{C}\geq 0$.
+\end{document} 
